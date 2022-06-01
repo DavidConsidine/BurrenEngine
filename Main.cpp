@@ -9,6 +9,12 @@ LRESULT WndMessageProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     switch (uMsg)
     {
     case WM_CLOSE:  // msg signalling window should terminate
+        if (MessageBox(hWnd, L"Close Window?", L"Burren Engine", MB_OKCANCEL) == IDOK)
+        {
+            DestroyWindow(hWnd);
+        }
+        return 0;
+    case WM_DESTROY:
         PostQuitMessage(0);
         return 0;
     case WM_PAINT:  // msg signalling window must repaint a portion of it's client area
