@@ -11,6 +11,14 @@ LRESULT WndMessageProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     case WM_CLOSE:  // msg signalling window should terminate
         PostQuitMessage(0);
         return 0;
+    case WM_PAINT:  // msg signalling window must repaint a portion of it's client area
+    {
+        PAINTSTRUCT ps = {};
+        HDC hdc = BeginPaint(hWnd, &ps);
+        FillRect(hdc, &ps.rcPaint, (HBRUSH)(COLOR_WINDOW + 1));
+        EndPaint(hWnd, &ps);
+        return 0;
+    }
     case WM_SIZE:   // msg signalling window size has changed
         break;
     case WM_KILLFOCUS:  // msg signalling window is losing keyboard focus
