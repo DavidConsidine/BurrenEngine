@@ -29,6 +29,7 @@ public:
 	static std::optional<int> ProcessMessages();
 
 private:
+	void SetTitleText(HWND hWnd, const wchar_t* newTitle);
 	static LRESULT SetupMessageProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 	static LRESULT WndMessageThunk(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 	LRESULT WndMessageProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
