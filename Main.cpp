@@ -4,7 +4,7 @@
 
 int CALLBACK WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR lpCmdLine, int nCmdShow)
 {
-    Window wnd{ L"Burren Engine" };
+    Window wnd{ 800, 600, L"Burren Engine" };
     
     try
     {

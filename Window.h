@@ -1,6 +1,7 @@
 #pragma once
 #include <Windows.h>
 #include <optional>
+#include "Mouse.h"
 
 class Window
 {
@@ -8,11 +9,11 @@ private:
 	class WindowClass
 	{
 	public:
-		static const wchar_t* GetName();
-		static HINSTANCE GetInstance();
+		static const wchar_t* GetName()noexcept;
+		static HINSTANCE GetInstance()noexcept;
 
 	private:
-		WindowClass();
+		WindowClass()noexcept;
 		~WindowClass();
 		WindowClass(const WindowClass&) = delete;
 		WindowClass& operator=(const WindowClass&) = delete;
@@ -22,17 +23,22 @@ private:
 		HINSTANCE hInst;
 	};
 public:
-	Window(const wchar_t* name);
+	Window(int width, int height, const wchar_t* name);
 	~Window();
 	Window(const Window&) = delete;
 	Window& operator=(const Window&) = delete;
-	static std::optional<int> ProcessMessages();
+	static std::optional<int> ProcessMessages() noexcept;
+	
+	Mouse mouse;
 
 private:
 	void SetTitleText(HWND hWnd, const wchar_t* newTitle);
-	static LRESULT SetupMessageProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
-	static LRESULT WndMessageThunk(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
-	LRESULT WndMessageProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
+	static LRESULT SetupMessageProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) noexcept;
+	static LRESULT WndMessageThunk(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)noexcept;
+	LRESULT WndMessageProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)noexcept;
 
+	int width;
+	int height;
 	HWND hWnd;
+	
 };

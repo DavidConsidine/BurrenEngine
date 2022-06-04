@@ -2,7 +2,8 @@
 
 Window::WindowClass Window::WindowClass::windowClass;
 
-Window::WindowClass::WindowClass():
+Window::WindowClass::WindowClass() noexcept
+    :
     hInst(GetModuleHandle(nullptr))
 {
     // Define the window class
@@ -27,28 +28,40 @@ Window::WindowClass::~WindowClass()
     UnregisterClass(GetName(), GetInstance());
 }
 
-const wchar_t* Window::WindowClass::GetName()
+const wchar_t* Window::WindowClass::GetName() noexcept
 {
     return className;
 }
 
-HINSTANCE Window::WindowClass::GetInstance()
+HINSTANCE Window::WindowClass::GetInstance() noexcept
 {
     return windowClass.hInst;
 }
 
-Window::Window(const wchar_t* name)
+Window::Window(int width, int height, const wchar_t* name)
+    :
+    width(width),
+    height(height)
 {
+    RECT wndRect{};
+    wndRect.left = 100;
+    wndRect.right = wndRect.left + width;
+    wndRect.top = 100;
+    wndRect.bottom = wndRect.top + height;
+    if (AdjustWindowRect(&wndRect, WS_CAPTION | WS_MINIMIZEBOX | WS_SYSMENU, FALSE) == 0)
+    {
+        throw std::exception("adjust window rect failed");
+    }
     hWnd = CreateWindow(
         WindowClass::GetName(), name,
         WS_CAPTION | WS_MINIMIZEBOX | WS_SYSMENU,
-        CW_USEDEFAULT, CW_USEDEFAULT, 800, 600, nullptr, nullptr,
-        WindowClass::GetInstance(), nullptr
+        CW_USEDEFAULT, CW_USEDEFAULT, wndRect.right - wndRect.left, wndRect.bottom - wndRect.top,
+        nullptr, nullptr, WindowClass::GetInstance(), this
     );
 
     if (hWnd == nullptr)
     {
-        // throw error
+        throw std::exception("Window handle is null");
     }
     ShowWindow(hWnd, SW_SHOWDEFAULT);
 }
@@ -58,7 +71,7 @@ Window::~Window()
     DestroyWindow(hWnd);
 }
 
-std::optional<int> Window::ProcessMessages()
+std::optional<int> Window::ProcessMessages() noexcept
 {
     MSG msg{};
     while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))    // non-blocking
@@ -77,11 +90,11 @@ void Window::SetTitleText(HWND hWnd, const wchar_t* newTitle)
 {
     if (SetWindowText(hWnd, newTitle) == 0)
     {
-        // something went wrong
+        throw std::exception("set window text failed");
     }
 }
 
-LRESULT Window::SetupMessageProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+LRESULT Window::SetupMessageProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) noexcept
 {
     if (uMsg == WM_NCCREATE)
     {
@@ -94,17 +107,14 @@ LRESULT Window::SetupMessageProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPa
     return DefWindowProc(hWnd, uMsg, wParam, lParam);
 }
 
-LRESULT Window::WndMessageThunk(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+LRESULT Window::WndMessageThunk(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) noexcept
 {
     Window* const pWnd = reinterpret_cast<Window*>(GetWindowLongPtr(hWnd, GWLP_USERDATA));
     return pWnd->WndMessageProc(hWnd, uMsg, wParam, lParam);
 }
 
-LRESULT Window::WndMessageProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+LRESULT Window::WndMessageProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) noexcept
 {
-    bool bLButtonPressed = false;
-    bool bRButtonPressed = false;
-    bool bMButtonPressed = false;
     switch (uMsg)
     {
     case WM_CLOSE:  // msg signalling window should terminate
@@ -118,11 +128,11 @@ LRESULT Window::WndMessageProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPara
         return 0;
     case WM_PAINT:  // msg signalling window must repaint a portion of it's client area
     {
-        PAINTSTRUCT ps = {};
-        HDC hdc = BeginPaint(hWnd, &ps);
-        FillRect(hdc, &ps.rcPaint, (HBRUSH)(COLOR_WINDOW + 1));
-        EndPaint(hWnd, &ps);
-        return 0;
+        //PAINTSTRUCT ps = {};
+        //HDC hdc = BeginPaint(hWnd, &ps);
+        //FillRect(hdc, &ps.rcPaint, (HBRUSH)(COLOR_WINDOW + 1));
+        //EndPaint(hWnd, &ps);
+        break;
     }
     case WM_SIZE:   // msg signalling window size has changed
         break;
@@ -150,59 +160,51 @@ LRESULT Window::WndMessageProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPara
     /* Mouse messages: START */
     case WM_LBUTTONDOWN:
     {
-        MAKEPOINTS(lParam);
-        bLButtonPressed = true;
-        SetTitleText(hWnd, L"LB pressed");
+        const POINTS pt = MAKEPOINTS(lParam);
+        mouse.OnLeftPressed(pt.x, pt.y);
         break;
     }
     case WM_LBUTTONUP:
     {
-        bLButtonPressed = false;
-        MAKEPOINTS(lParam);
-        SetTitleText(hWnd, L"LB released");
+        const POINTS pt = MAKEPOINTS(lParam);
+        mouse.OnLeftReleased(pt.x, pt.y);
         break;
     }
     case WM_RBUTTONDOWN:
     {
-        bRButtonPressed = true;
-        MAKEPOINTS(lParam);
-        SetTitleText(hWnd, L"RB pressed");
+        const POINTS pt = MAKEPOINTS(lParam);
+        mouse.OnRightPressed(pt.x, pt.y);
         break;
     }
     case WM_RBUTTONUP:
     {
-        bRButtonPressed = false;
-        MAKEPOINTS(lParam);
-        SetTitleText(hWnd, L"RB released");
+        const POINTS pt = MAKEPOINTS(lParam);
+        mouse.OnRightReleased(pt.x, pt.y);
         break;
     }
     case WM_MBUTTONDOWN:
     {
-        bMButtonPressed = true;
-        MAKEPOINTS(lParam);
-        SetTitleText(hWnd, L"MB pressed");
+        const POINTS pt = MAKEPOINTS(lParam);
+        mouse.OnMiddlePressed(pt.x, pt.y);
         break;
     }
     case WM_MBUTTONUP:
     {
-        bMButtonPressed = false;
-        MAKEPOINTS(lParam);
-        SetTitleText(hWnd, L"MB released");
+        const POINTS pt = MAKEPOINTS(lParam);
+        mouse.OnMiddleReleased(pt.x, pt.y);
         break;
     }
     case WM_MOUSEWHEEL:
     {
-        MAKEPOINTS(lParam);
-        GET_KEYSTATE_WPARAM(wParam);
-        GET_WHEEL_DELTA_WPARAM(wParam);
-        SetTitleText(hWnd, L"mouse wheel delta");
+        const POINTS pt = MAKEPOINTS(lParam);
+        const int delta = GET_WHEEL_DELTA_WPARAM(wParam);
+        mouse.OnWheelDelta(pt.x, pt.y, delta);
         break;
     }
     case WM_MOUSEMOVE:
     {
-        GET_KEYSTATE_WPARAM(wParam);
-        MAKEPOINTS(lParam);
-        SetTitleText(hWnd, L"mouse move");
+        POINTS pt = MAKEPOINTS(lParam);
+        //mouse.OnMouseMove(pt.x, pt.y);
         break;
     }
     /* Mouse messages: END */
